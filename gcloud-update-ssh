@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+HOST=$(
+    gum input \
+        --header="Enter the host name" \
+        --value="dvicente-dev"
+)
+
+ZONE=$(
+    gum input \
+        --header="Enter the zone of the machine" \
+        --value="us-central1-a"
+)
+
+OLD_IP=$(
+    grep -w "$HOST" -A 1 ~/.ssh/config \
+    | awk 'BEGIN{IGNORECASE=1} /HostName/ {print $2}'
+)
+
+NEW_IP=$(
+    gum spin \
+        --show-output \
+        --spinner dot \
+        --title "Fetching the new IP for $HOST..." \
+        -- gcloud compute instances describe "$HOST" \
+            --zone="$ZONE" \
+            --format='get(networkInterfaces[0].accessConfigs[0].natIP)'
+)
+
+# https://stackoverflow.com/a/62309999
+sed -i "" "s/$OLD_IP/$NEW_IP/g" ~/.ssh/config 
+
+echo "Updated IP for $HOST from $OLD_IP to $NEW_IP"
